@@ -22,8 +22,8 @@ sns.set()
 path = r"C:\Users\grace\OneDrive\Documents\Warmflash Lab\Video Analysis Project\Data"
 
 # number of experimental conditions
-nexpcon = 42
-#dsdfasfs
+nexpcon = 4
+
 
 #%% LOAD DATA
 
@@ -67,24 +67,27 @@ for f in range(len(allmovies)):
     # remove cells with unknown lineage
     fincells=fincells[fincells["trackId"] != -1]
     
-    # initialize matrix containing final cellular data from the movie
-    finmovie_matrix=np.zeros([finframe+1,5,len(fincells)])
+    # initialize data frame to store all data from given experimental condition
+    fincell_df=pd.DataFrame()
+    
+    # create new column to store final cell number
+    fincell_df["Final_Cell_Number"]=0 
     
     # create data frame tracking lineage of each final cell
     for i in range(len(fincells)):
         
-        # new data frame with final cell as first row
-        fincell_df=pd.DataFrame(fincells.iloc[i]).transpose()
+        # add data from last frame for each final cell to data frame
+        fincell_df=pd.concat([fincell_df, pd.DataFrame(fincells.iloc[i]).transpose()])
         
         # reset index
         fincell_df=fincell_df.reset_index(drop="True")
         
         # initialize variables
-        trackId=fincell_df["trackId"].item()
+        trackId=fincell_df["trackId"][len(fincell_df)-1].item()
         
         frame=finframe-1
         
-        row=0
+        row=len(fincell_df)-1
         
         # trace back the lineage for each final cell
         while frame >= 0:
@@ -94,10 +97,12 @@ for f in range(len(allmovies)):
                 
                 # add data to data frame for cell
                 fincell_df=pd.concat([fincell_df, movie[(movie["frame"]==frame) & (movie["trackId"]==trackId)]])
-                                
+                
                 fincell_df=fincell_df.reset_index(drop="True")
-
-
+                
+                # store final cell number
+                fincell_df["Final_Cell_Number"][row]=i
+                
             # if current frame is first appearance of cell
             else:
                 
@@ -107,19 +112,31 @@ for f in range(len(allmovies)):
                 fincell_df=pd.concat([fincell_df, movie[(movie["frame"]==frame) & (movie["trackId"]==trackId)]])
 
                 fincell_df=fincell_df.reset_index(drop="True")
-
                 
+                # store final cell number
+                fincell_df["Final_Cell_Number"][row]=i
                 
             frame=frame-1
             
-            row=row+1
+            row=len(fincell_df)-1
+                
         
-        fincell_df=fincell_df[["frame", "parentTrackId", "Mean_Intensity_0",
-                              "Mean_Intensity_1", "Object_Area_0"]]
+    # CLEAN DATA
+    
+    # keep columns of interest
+    fincell_df=fincell_df[["frame", "parentTrackId", "Mean_Intensity_0",
+                    "Mean_Intensity_1", "Object_Area_0", "Final_Cell_Number"]]
+    
+    
+    # remove nan values
+    for j in range(len(fincell_df)):
         
-        finmovie_matrix[:,:,i]=np.array(fincell_df)
-
-    experiments.append(finmovie_matrix)
+        if pd.isna(fincell_df["Final_Cell_Number"][j])==True:
+            
+            fincell_df["Final_Cell_Number"][j]=fincell_df["Final_Cell_Number"][j-1]
+                
+    # add data frame for experimental condition to experiments list
+    experiments.append(fincell_df)
     
     
     
