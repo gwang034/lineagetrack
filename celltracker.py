@@ -12,7 +12,7 @@ import seaborn as sns
 import pandas as pd
 import os
 import glob
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
 sns.set()
 
 
@@ -176,7 +176,42 @@ for g in range(nexpcon):
     experiments.append(fincell_df)
     
     
+#%% MEAN SOX2 AND H2B INTENSITIES
+
+# initialize empty list to store dataframes
+experiments_means=list()
+
+# iterate through experimental conditions
+for j in range(nexpcon):
     
+    # initialize new dataframe to store means for each exp. con.
+    fincellmeans_df=pd.DataFrame()
+    
+    # iterate through movies in each exp. con.
+    for k in range(clus):
+                
+        for l in range(finframe):
+            
+            row=0
+            
+            # mean intensity data for all cells in a frame
+            mean_data=experiments[j][(experiments[j]["Movie_Number"]==k) & 
+                                 (experiments[j]["hours"]==l/4)].mean()
+            
+            # keep columns of interest
+            mean_data=mean_data[["hours", "H2B_Intensity",
+                            "SOX2_Intensity", "Movie_Number"]]
+            
+            # 
+            fincellmeans_df=pd.concat([fincellmeans_df, 
+                                       pd.DataFrame(mean_data).transpose()])
+        
+    # rename H2B and SOX2 Columns
+    fincell_df.rename(columns={"H2B_Intensity":"H2B_Mean", 
+                               "SOX2_Intensity":"SOX2_Mean"},
+                      inplace=True)
+    
+    experiments_means.append(fincellmeans_df)
     
 #%% PLOTS: SOX2 EXPRESSION
 
