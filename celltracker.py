@@ -256,6 +256,43 @@ plt.setp(axes, ylim=(550,750))
 fig.tight_layout()
 
 
+#%% PLOTS: H2B INTENISTIES
+
+# create figure with 4 subplots for each experimental condition
+fig, axes = plt.subplots(2,2, figsize=(15,10))
+
+# set style
+sns.set_context("paper", font_scale=2)
+
+# create line plots for each final cell in each movie
+sns.lineplot(x="hours", y="H2B_Intensity", hue="Final_Cell_Number", 
+             data=experiments[0], palette="tab10", ax=axes[0,0], legend=False)
+
+sns.lineplot(x="hours", y="H2B_Intensity", hue="Final_Cell_Number", 
+             data=experiments[1], palette="tab10", ax=axes[0,1], legend=False)
+
+sns.lineplot(x="hours", y="H2B_Intensity", hue="Final_Cell_Number", 
+             data=experiments[2], palette="tab10", ax=axes[1,0], legend=False)
+
+sns.lineplot(x="hours", y="H2B_Intensity", hue="Final_Cell_Number", 
+             data=experiments[3], palette="tab10", ax=axes[1,1], legend=False)
+
+# set titles for plots
+axes[0,0].set_title('mTeSR 0-48', fontweight="bold")
+
+axes[0,1].set_title('BMP 10ng/ml 0-30, Noggin 30-48', fontweight="bold")
+
+axes[1,0].set_title('BMP 50ng/ml 0-30, Noggin 30-48', fontweight="bold")
+
+axes[1,1].set_title('BMP 50ng/ml 0-48', fontweight="bold")
+
+# set same y axis for all
+plt.setp(axes, ylim=(500,1000))
+
+# fix formatting
+fig.tight_layout()
+
+
 
 
 
