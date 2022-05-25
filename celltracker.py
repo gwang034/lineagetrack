@@ -215,17 +215,45 @@ for j in range(nexpcon):
     
 #%% PLOTS: SOX2 EXPRESSION
 
-fig, axes = plt.subplots(2,2, dpi=1000)
+# create figure with 4 subplots for each experimental condition
+fig, axes = plt.subplots(2,2, figsize=(15,10))
 
-axes[0].set_title('mTeSR 0-48')
+# set style
+sns.set_context("paper", font_scale=2)
 
-axes[1].set_title('BMP 10ng/ml 0-30, Noggin 30-48')
+# create line plots for each final cell in each movie
+sns.lineplot(x="hours", y="SOX2_Intensity", hue="Final_Cell_Number", 
+             data=experiments[0], ax=axes[0,0], legend=False)
 
-axes[2].set_title('BMP 50ng/ml 0-30, Noggin 30-48')
+sns.lineplot(x="hours", y="SOX2_Intensity", hue="Final_Cell_Number", 
+             data=experiments[1], ax=axes[0,1], legend=False)
 
-axes[3].set_title('BMP 50ng/ml 0-48')
+sns.lineplot(x="hours", y="SOX2_Intensity", hue="Final_Cell_Number", 
+             data=experiments[2], ax=axes[1,0], legend=False)
+
+sns.lineplot(x="hours", y="SOX2_Intensity", hue="Final_Cell_Number", 
+             data=experiments[3], ax=axes[1,1], legend=False)
+
+# plot the mean SOX2 expression in all cells at each time point
+sns.lineplot(x=experiments[0]["hours"], 
+             y=experiments[0][experiments[0]["hours"]==experiments[0]["hours"]]["Mean_Intensity_1"].mean(),
+             ax=axes[0,0])
 
 
+# set titles for plots
+axes[0,0].set_title('mTeSR 0-48', fontweight="bold")
+
+axes[0,1].set_title('BMP 10ng/ml 0-30, Noggin 30-48', fontweight="bold")
+
+axes[1,0].set_title('BMP 50ng/ml 0-30, Noggin 30-48', fontweight="bold")
+
+axes[1,1].set_title('BMP 50ng/ml 0-48', fontweight="bold")
+
+# set same y axis for all
+plt.setp(axes, ylim=(550,750))
+
+# fix formatting
+fig.tight_layout()
 
 
 
