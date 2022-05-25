@@ -47,25 +47,19 @@ for f in movie_names:
     # count number of movies
     nmov= nmov+1 
 
+# compute number of movies in one experimental condition
+clus=int(nmov/nexpcon)
     
 #%% FIND FINAL CELLS IN EACH MOVIE
 
 # initialize list to store all final experimental data
 experiments=list()
 
-for f in range(len(allmovies)):
     
-    # movie of interest
-    movie=allmovies[f]
+for g in range(nexpcon):
     
-    # finds final frame
-    finframe=max(movie["frame"])
-    
-    # finds cells in final frame
-    fincells=movie[movie["frame"]==finframe]
-    
-    # remove cells with unknown lineage
-    fincells=fincells[fincells["trackId"] != -1]
+    # focus on experimental condition of interest
+    allmovies_con=allmovies[g*clus:((g+1)*clus)]
     
     # initialize data frame to store all data from given experimental condition
     fincell_df=pd.DataFrame()
@@ -73,60 +67,99 @@ for f in range(len(allmovies)):
     # create new column to store final cell number
     fincell_df["Final_Cell_Number"]=0 
     
-    # create data frame tracking lineage of each final cell
-    for i in range(len(fincells)):
-        
-        # add data from last frame for each final cell to data frame
-        fincell_df=pd.concat([fincell_df, pd.DataFrame(fincells.iloc[i]).transpose()])
-        
-        # reset index
-        fincell_df=fincell_df.reset_index(drop="True")
-        
-        # initialize variables
-        trackId=fincell_df["trackId"][len(fincell_df)-1].item()
-        
-        frame=finframe-1
-        
-        row=len(fincell_df)-1
-        
-        # trace back the lineage for each final cell
-        while frame >= 0:
-            
-            # if current frame is not first appearance of cell
-            if int(fincell_df["parentTrackId"][row]) == 0:
-                
-                # add data to data frame for cell
-                fincell_df=pd.concat([fincell_df, movie[(movie["frame"]==frame) & (movie["trackId"]==trackId)]])
-                
-                fincell_df=fincell_df.reset_index(drop="True")
-                
-                # store final cell number
-                fincell_df["Final_Cell_Number"][row]=i
-                
-            # if current frame is first appearance of cell
-            else:
-                
-                # add data to data frame for cell
-                trackId=fincell_df["parentTrackId"][row].item()
-                
-                fincell_df=pd.concat([fincell_df, movie[(movie["frame"]==frame) & (movie["trackId"]==trackId)]])
+    # create new column to store movie number
+    fincell_df["Movie_Number"]=0
+    
+    exp_mov_num=0    
 
-                fincell_df=fincell_df.reset_index(drop="True")
-                
-                # store final cell number
-                fincell_df["Final_Cell_Number"][row]=i
-                
-            frame=frame-1
+    
+    for f in range(len(allmovies_con)):
+        
+        # movie of interest
+        movie=allmovies_con[f]
+        
+        # finds final frame
+        finframe=max(movie["frame"])
+        
+        # finds cells in final frame
+        fincells=movie[movie["frame"]==finframe]
+        
+        # remove cells with unknown lineage
+        fincells=fincells[fincells["trackId"] != -1]
+        
+        
+        # create data frame tracking lineage of each final cell
+        for i in range(len(fincells)):
+            
+            # add data from last frame for each final cell to data frame
+            fincell_df=pd.concat([fincell_df, pd.DataFrame(fincells.iloc[i]).transpose()])
+            
+            # reset index
+            fincell_df=fincell_df.reset_index(drop="True")
+            
+            # initialize variables
+            trackId=fincell_df["trackId"][len(fincell_df)-1].item()
+            
+            frame=finframe-1
             
             row=len(fincell_df)-1
+            
+            # trace back the lineage for each final cell
+            while frame >= 0:
                 
-        
+                # if current frame is not first appearance of cell
+                if int(fincell_df["parentTrackId"][row]) == 0:
+                    
+                    # add data to data frame for cell
+                    fincell_df=pd.concat([fincell_df, movie[(movie["frame"]==frame) & (movie["trackId"]==trackId)]])
+                    
+                    fincell_df=fincell_df.reset_index(drop="True")
+                    
+                    # store final cell number
+                    fincell_df["Final_Cell_Number"][row]=i
+                    
+                    # store movie number
+                    fincell_df["Movie_Number"][row]=exp_mov_num
+                    
+                # if current frame is first appearance of cell
+                else:
+                    
+                    # add data to data frame for cell
+                    trackId=fincell_df["parentTrackId"][row].item()
+                    
+                    fincell_df=pd.concat([fincell_df, movie[(movie["frame"]==frame) & (movie["trackId"]==trackId)]])
+    
+                    fincell_df=fincell_df.reset_index(drop="True")
+                    
+                    # store final cell number
+                    fincell_df["Final_Cell_Number"][row]=i
+                    
+                    # store movie number
+                    fincell_df["Movie_Number"][row]=exp_mov_num
+                    
+                frame=frame-1
+                
+                row=len(fincell_df)-1
+    
+        exp_mov_num=exp_mov_num+1
+      
     # CLEAN DATA
     
     # keep columns of interest
     fincell_df=fincell_df[["frame", "parentTrackId", "Mean_Intensity_0",
-                    "Mean_Intensity_1", "Object_Area_0", "Final_Cell_Number"]]
+                    "Mean_Intensity_1", "Object_Area_0", "Final_Cell_Number",
+                    "Movie_Number"]]
     
+    # rename "frame" column "hours"
+    fincell_df.rename(columns={"frame":"hours"}, inplace=True)
+    
+    # convert frames to hours c 
+    fincell_df["hours"]=15*fincell_df["hours"]/60
+    
+    # rename H2B and SOX2 Columns
+    fincell_df.rename(columns={"Mean_Intensity_0":"H2B_Intensity", 
+                               "Mean_Intensity_1":"SOX2_Intensity"},
+                      inplace=True)
     
     # remove nan values
     for j in range(len(fincell_df)):
@@ -134,6 +167,10 @@ for f in range(len(allmovies)):
         if pd.isna(fincell_df["Final_Cell_Number"][j])==True:
             
             fincell_df["Final_Cell_Number"][j]=fincell_df["Final_Cell_Number"][j-1]
+            
+        if pd.isna(fincell_df["Movie_Number"][j])==True:
+            
+            fincell_df["Movie_Number"][j]=fincell_df["Movie_Number"][j-1]
                 
     # add data frame for experimental condition to experiments list
     experiments.append(fincell_df)
