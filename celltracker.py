@@ -199,21 +199,26 @@ for j in range(nexpcon):
                                  (experiments[j]["hours"]==l/4)].mean()
             
             # keep columns of interest
-            mean_data=mean_data[["hours", "H2B_Intensity",
-                            "SOX2_Intensity", "Movie_Number"]]
+            mean_data=mean_data[["hours", "H2B_Intensity", "SOX2_Intensity", 
+                                 "Movie_Number"]]
             
-            # 
+            # append row to dataframe
             fincellmeans_df=pd.concat([fincellmeans_df, 
                                        pd.DataFrame(mean_data).transpose()])
+            
+            # reset index
+            fincellmeans_df=fincellmeans_df.reset_index(drop="True")
+
         
     # rename H2B and SOX2 Columns
-    fincell_df.rename(columns={"H2B_Intensity":"H2B_Mean", 
-                               "SOX2_Intensity":"SOX2_Mean"},
+    fincellmeans_df.rename(columns={"H2B_Intensity":"H2B_Mean", 
+                                "SOX2_Intensity":"SOX2_Mean"},
                       inplace=True)
     
+    # add dataframe to list
     experiments_means.append(fincellmeans_df)
     
-#%% PLOTS: SOX2 EXPRESSION
+#%% PLOTS: SOX2 INTENSITIES
 
 # create figure with 4 subplots for each experimental condition
 fig, axes = plt.subplots(2,2, figsize=(15,10))
@@ -223,22 +228,29 @@ sns.set_context("paper", font_scale=2)
 
 # create line plots for each final cell in each movie
 sns.lineplot(x="hours", y="SOX2_Intensity", hue="Final_Cell_Number", 
-             data=experiments[0], ax=axes[0,0], legend=False)
+             data=experiments[0], palette="tab10", ax=axes[0,0], legend=False)
 
 sns.lineplot(x="hours", y="SOX2_Intensity", hue="Final_Cell_Number", 
-             data=experiments[1], ax=axes[0,1], legend=False)
+             data=experiments[1], palette="tab10", ax=axes[0,1], legend=False)
 
 sns.lineplot(x="hours", y="SOX2_Intensity", hue="Final_Cell_Number", 
-             data=experiments[2], ax=axes[1,0], legend=False)
+             data=experiments[2], palette="tab10", ax=axes[1,0], legend=False)
 
 sns.lineplot(x="hours", y="SOX2_Intensity", hue="Final_Cell_Number", 
-             data=experiments[3], ax=axes[1,1], legend=False)
+             data=experiments[3], palette="tab10", ax=axes[1,1], legend=False)
 
 # plot the mean SOX2 expression in all cells at each time point
-sns.lineplot(x=experiments[0]["hours"], 
-             y=experiments[0][experiments[0]["hours"]==experiments[0]["hours"]]["Mean_Intensity_1"].mean(),
-             ax=axes[0,0])
+sns.lineplot(x="hours", y="SOX2_Intensity", data=experiments[0], color="Black", 
+             err_style="bars", err_kws={'capsize':3}, ax=axes[0,0])
 
+sns.lineplot(x="hours", y="SOX2_Intensity", data=experiments[1], color="Black", 
+             err_style="bars", err_kws={'capsize':3}, ax=axes[0,1])
+
+sns.lineplot(x="hours", y="SOX2_Intensity", data=experiments[2], color="Black", 
+             err_style="bars", err_kws={'capsize':3}, ax=axes[1,0])
+
+sns.lineplot(x="hours", y="SOX2_Intensity", data=experiments[3], color="Black", 
+             err_style="bars", err_kws={'capsize':3}, ax=axes[1,1])
 
 # set titles for plots
 axes[0,0].set_title('mTeSR 0-48', fontweight="bold")
