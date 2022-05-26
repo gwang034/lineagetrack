@@ -146,9 +146,10 @@ for g in range(nexpcon):
     # CLEAN DATA
     
     # keep columns of interest
-    fincell_df=fincell_df[["frame", "parentTrackId", "Mean_Intensity_0",
-                    "Mean_Intensity_1", "Object_Area_0", "Final_Cell_Number",
-                    "Movie_Number"]]
+    fincell_df=fincell_df[["frame", "trackId", "lineageId", "parentTrackId", 
+                           "Mean_Intensity_0", "Mean_Intensity_1", 
+                           "Object_Area_0", "Final_Cell_Number",
+                           "Movie_Number"]]
     
     # rename "frame" column "hours"
     fincell_df.rename(columns={"frame":"hours"}, inplace=True)
@@ -305,8 +306,51 @@ plt.setp(axes, ylim=(500,1000))
 fig.tight_layout()
 
 
+#%% PLOTS: SOX2 EXPRESSION IN A LINEAGE
 
+# Exp. Conditions of interest: 
+    # BMP 10ng/ml 0-30, Noggin 30-48 (expcon = 1)
+    # BMP 50ng/ml 0-30, Noggin 30-48 (expcon = 2)
+    
+expcon=1
 
+orig_cells=pd.unique(experiments[expcon]["lineageId"])
+
+for f in range(len(orig_cells)):
+    
+    # chooses original cell of interest
+    orig_cell=orig_cells[f]
+    
+    # focuses only on cells in the lineage of the original cell
+    lineage=experiments[expcon][experiments[expcon]["lineageId"]==orig_cell]
+    
+    # plot SOX2 expression of cells in lineage
+    plt.figure(dpi=500)
+    
+    sns.set_context("paper", font_scale=1.5)
+    
+    sns.lineplot(x="hours", y="SOX2_Intensity", data=lineage, hue="trackId",
+                 palette="tab10", legend=False)
+    
+    # plot vertical line at hour 0 and hour 30
+    plt.axvline(x = 30, color = 'k', ls='--')
+    
+    plt.axvline(x = 0, color = 'k', ls='--')
+    
+    # set title
+    plt.suptitle('SOX2 Intensities within Cell Lineage', fontsize=18)
+    
+    titles=[0, "BMP 10ng/ml 0-30, Noggin 30-48", 
+            "BMP 50ng/ml 0-30, Noggin 30-48"]
+    
+    plt.title(titles[expcon], fontsize=12)
+
+    # set same y axis for all
+    plt.ylim(550,700)
+    
+    # fix formatting
+    fig.tight_layout()
+               
 
 
 
