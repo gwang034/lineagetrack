@@ -351,6 +351,91 @@ for f in range(len(orig_cells)):
     # fix formatting
     fig.tight_layout()
                
+#%% CELL MATCHING: MAX PROJ IMAGES
+
+# For the image to be aligned, a max projection image should be used.
+# Run this code if images are not currently max projection images.
+
+
+#============================** CHANGE VARIABLES **============================
+
+img_loc=r"C:\Users\grace\OneDrive\Documents\Warmflash Lab\Video Analysis Project\Data\photo frames"
+
+Nchannels=4
+
+#==============================================================================
+
+# initialize
+import os
+from skimage import io
+import tifffile
+
+img_name=[]
+
+# make new folder for max proj images
+namempfolder = os.path.join(img_loc,"MaxProj")  # Specifies name of folder
+    
+if not os.path.exists(namempfolder):    #check if directory does not exist
+
+    os.mkdir(namempfolder)              # make new folder for maxproj imgs
+        
+    
+# create list of image names
+for images in os.listdir(img_loc):
+    
+    if (images.endswith(".tif")):       # check if the image ends with .tif
+    
+        img_name.append(images)         # adds to list of image names
+
+
+# make max projection images
+for f in range(len(img_name)):
+    
+    filename=img_name[f]                   # choose image of interest
+    
+    img=io.imread(img_loc+"/"+filename, fastij=False)
+        
+    NZstacks=int(len(img)/Nchannels)        # compute # of z stacks
+    
+    maxprojchan = []
+    
+    for channelnum in range(0,Nchannels):
+        
+        z=1
+        
+        idx = channelnum+(z-1)*Nchannels
+        
+        imaux = img[idx,:,:]
+        
+        maxprojchan = imaux
+                
+        for z in range(1,NZstacks):
+            
+            idx = channelnum+z*Nchannels;
+            
+            imaux = img[idx,:,:]
+            
+            maxprojchan = np.maximum(maxprojchan,imaux)
+            
+        maxprojchan[:,:]=maxprojchan
+        
+        plt.figure()
+        
+        plt.imshow(maxprojchan)
+        
+        os.chdir(namempfolder)
+        
+        final_file=(filename[0:-4]+'_maxproj')
+        
+        if channelnum==0:
+            
+            tifffile.imwrite(str(final_file+'.tif'), maxprojchan)
+            
+        else:
+            
+            with tifffile.TiffWriter(str(final_file+'.tif'), append=True) as tif2write:
+                tif2write.save(maxprojchan)
+    
 
 
 
