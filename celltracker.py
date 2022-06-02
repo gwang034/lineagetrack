@@ -436,6 +436,120 @@ for f in range(len(img_name)):
             with tifffile.TiffWriter(str(final_file+'.tif'), append=True) as tif2write:
                 tif2write.save(maxprojchan)
     
+#%% CELL MATCHING: SEGMENT IMAGES AND CREATE IMAGE DATAFRAME
+
+# Note: Must run in an environment with Cellpose installed.
+
+# ====================== ** CHANGE PARAMETERS ** ==============================
+
+Nchannels=4
+
+script_path=r"C:\Users\grace\OneDrive\Documents\Warmflash Lab\Video Analysis Project\code\lineagetrack"
+
+# location of photos to be segmented
+img_path=r"C:\Users\grace\OneDrive\Documents\Warmflash Lab\Video Analysis Project\Data\photo frames\MaxProj"
+
+# =============================================================================
+
+from skimage import io
+from skimage import measure
+import os
+import numpy as np
+import pandas as pd
+
+
+# change path to where you have Image_Processing saved
+os.chdir(script_path)
+
+# import all functions and packages from Image_Processing
+from Cell_Segmenter import loadimages, run_seg, seg_load, clean_seg
+
+# collect all image names
+image_name=[]       # initialize array image_name
+
+for images in os.listdir(img_path):
+        
+    if (images.endswith(".tif")):       # check if the image ends with .tif
+        image_name.append(images)
+
+# initialize list to store data from experimental photos
+experiment_photos=list()
+
+for f in range(len(image_name)):
+    
+    # chooses image to focus on
+    filename=image_name[f]
+    
+    # full file path
+    full_path=(img_path +'/'+filename)
+    
+    # loads image
+    img = loadimages(full_path)
+    
+    # complete segmentation if it does not already exist
+    if not os.path.exists(img_path +'/'+filename[0:-4]+'_seg.npy'):
+
+        run_seg(full_path, script_path)
+    
+    # load segmentation data
+    [masks, img]=seg_load(img_path, filename)
+    
+    # clean masks
+    masksclean = clean_seg(masks)
+    
+    maxprojimage=np.zeros((img.shape[0], img.shape[1], Nchannels)) # initialize array
+    
+    photo_df=pd.DataFrame()
+    
+    from skimage import io
+    
+    for chan in range(Nchannels):
+        # load each channel of the maxproj image into array
+        maxprojimage[:,:, chan]=io.imread(full_path, img_num=chan)
+        
+        if chan==0:
+            centroid = measure.regionprops_table(masksclean, maxprojimage[:,:, chan], 
+                                              properties=['centroid'])
+            
+            dapi_int = measure.regionprops_table(masksclean, maxprojimage[:,:, chan], 
+                                              properties=['mean_intensity'])
+            
+            # create dataframe
+            photo_df=pd.DataFrame(centroid)
+            
+            photo_df=pd.concat([photo_df, pd.DataFrame(dapi_int)], axis=1)
+            
+            photo_df.rename(columns={"mean_intensity":"dapi"}, inplace=True)
+            
+        if chan==1:
+            
+            h2b_int = measure.regionprops_table(masksclean, maxprojimage[:,:, chan], 
+                                              properties=['mean_intensity'])
+            
+            photo_df=pd.concat([photo_df, pd.DataFrame(h2b_int)], axis=1)
+            
+            photo_df.rename(columns={"mean_intensity":"h2b"}, inplace=True)
+            
+        if chan==2:
+            
+            sox2_int = measure.regionprops_table(masksclean, maxprojimage[:,:, chan], 
+                                              properties=['mean_intensity'])
+            
+            photo_df=pd.concat([photo_df, pd.DataFrame(sox2_int)], axis=1)
+            
+            photo_df.rename(columns={"mean_intensity":"sox2"}, inplace=True)
+            
+        if chan==3:
+            bra_int = measure.regionprops_table(masksclean, maxprojimage[:,:, chan], 
+                                              properties=['mean_intensity'])
+            
+            photo_df=pd.concat([photo_df, pd.DataFrame(bra_int)], axis=1)
+            
+            photo_df.rename(columns={"mean_intensity":"bra"}, inplace=True)
+            
+        
+        experiment_photos.append(photo_df)
+
 
 
 
