@@ -19,10 +19,16 @@ sns.set()
 #%% CHANGE VARIABLES
 
 # path to folder containing movies
-path = r"C:\Users\grace\OneDrive\Documents\Warmflash Lab\Video Analysis Project\Data"
+path = r"C:\Users\grace\OneDrive\Documents\Warmflash Lab\Video Analysis Project\Data\Full Data\CSV Files"
 
 # number of experimental conditions
 nexpcon = 4
+
+# number of expected movies (may be different from real number)
+nmov = 64
+
+# compute number of movies in one experimental condition
+clus=int(nmov/nexpcon)
 
 
 #%% LOAD DATA
@@ -34,8 +40,6 @@ movie_names = glob.glob(os.path.join(path, "*.csv"))
 # initialize list to store all data frames
 allmovies=list()
 
-nmov=0 
-
 # loop over the list of csv files
 for f in movie_names:
       
@@ -43,24 +47,51 @@ for f in movie_names:
     df = pd.read_csv(f)
     
     allmovies.append(df)
-    
-    # count number of movies
-    nmov= nmov+1 
 
-# compute number of movies in one experimental condition
-clus=int(nmov/nexpcon)
+
     
-#%% FIND FINAL CELLS IN EACH MOVIE
+#%% DATA FRAME: LINEAGES FROM FINAL CELLS
 
 # initialize list to store all final experimental data
 experiments=list()
 
+# make new folder for dataframes
+namefindffolder = os.path.join(path,"Final Dataframes")  # Specifies name of folder
+    
+if not os.path.exists(namefindffolder): #check if directory does not exist
+
+    os.mkdir(namefindffolder)           # make new folder for final dataframes
+        
     
 for g in range(nexpcon):
     
-    # focus on experimental condition of interest
-    allmovies_con=allmovies[g*clus:((g+1)*clus)]
+    # initialize list to store all movies of the same experimental condition
+    allmovies_con=list()
     
+    # create an array of all possible movie numbers
+    nmov_ar = np.array(range(nmov))
+    
+    nmov_st=list()
+    
+    # change all to two digit number strings
+    for j in range(len(nmov_ar)):
+        
+        nmov_st.append(str(nmov_ar[j]).zfill(2))
+    
+    # focus on experimental condition of interest
+    mov_nums=nmov_st[g*clus//2:((g+1)*clus//2)]
+
+    mov_nums=np.append(mov_nums, nmov_st[nmov-(clus//2*(g+1)):nmov-(clus//2*(g))])
+    
+    # store all movies of one experimental condition in a dataframe
+    for h in range(len(mov_nums)):
+        
+        for i in range(len(movie_names)):
+            
+            if movie_names[i][-16:-14]==mov_nums[h]:
+                
+                allmovies_con.append(allmovies[i])
+                
     # initialize data frame to store all data from given experimental condition
     fincell_df=pd.DataFrame()
     
@@ -149,7 +180,8 @@ for g in range(nexpcon):
     fincell_df=fincell_df[["frame", "trackId", "lineageId", "parentTrackId", 
                            "Mean_Intensity_0", "Mean_Intensity_1", 
                            "Object_Area_0", "Final_Cell_Number",
-                           "Movie_Number"]]
+                           "Movie_Number", "Object_Center_0", 
+                           "Object_Center_1", "Object_Area_0"]]
     
     # rename "frame" column "hours"
     fincell_df.rename(columns={"frame":"hours"}, inplace=True)
@@ -167,17 +199,40 @@ for g in range(nexpcon):
         
         if pd.isna(fincell_df["Final_Cell_Number"][j])==True:
             
-            fincell_df["Final_Cell_Number"][j]=fincell_df["Final_Cell_Number"][j-1]
+            fincell_df.loc[j].at["Final_Cell_Number"]=fincell_df["Final_Cell_Number"][j-1]
             
         if pd.isna(fincell_df["Movie_Number"][j])==True:
             
-            fincell_df["Movie_Number"][j]=fincell_df["Movie_Number"][j-1]
-                
+            fincell_df.loc[j].at["Movie_Number"]=fincell_df["Movie_Number"][j-1]
+    
+    print(g)
+    
+    # save dataframe
+    fincell_df.to_csv(namefindffolder+'/'+'condition_'+str(g)+'.csv')
+    
     # add data frame for experimental condition to experiments list
     experiments.append(fincell_df)
     
+#%% DATA FRAME: FINAL CELLS ONLY
+
+# initialize list to contain all dataframes
+fincell_only=list()
+
+for f in range(len(experiments)):
     
-#%% MEAN SOX2 AND H2B INTENSITIES
+    exp=experiments[f]
+    
+    # only keep cells in the final frame
+    new_df=exp[exp["hours"]==50.50]
+    
+    new_df=new_df.reset_index(drop="True")
+    
+    fincell_only.append(new_df)
+    
+    
+    
+    
+#%% DATA FRAME: MEAN SOX2 AND H2B INTENSITIES
 
 # initialize empty list to store dataframes
 experiments_means=list()
@@ -351,204 +406,8 @@ for f in range(len(orig_cells)):
     # fix formatting
     fig.tight_layout()
                
-#%% CELL MATCHING: MAX PROJ IMAGES
-
-# For the image to be aligned, a max projection image should be used.
-# Run this code if images are not currently max projection images.
 
 
-#============================** CHANGE VARIABLES **============================
-
-img_loc=r"C:\Users\grace\OneDrive\Documents\Warmflash Lab\Video Analysis Project\Data\photo frames"
-
-Nchannels=4
-
-#==============================================================================
-
-# initialize
-import os
-from skimage import io
-import tifffile
-
-img_name=[]
-
-# make new folder for max proj images
-namempfolder = os.path.join(img_loc,"MaxProj")  # Specifies name of folder
-    
-if not os.path.exists(namempfolder):    #check if directory does not exist
-
-    os.mkdir(namempfolder)              # make new folder for maxproj imgs
-        
-    
-# create list of image names
-for images in os.listdir(img_loc):
-    
-    if (images.endswith(".tif")):       # check if the image ends with .tif
-    
-        img_name.append(images)         # adds to list of image names
-
-
-# make max projection images
-for f in range(len(img_name)):
-    
-    filename=img_name[f]                   # choose image of interest
-    
-    img=io.imread(img_loc+"/"+filename, fastij=False)
-        
-    NZstacks=int(len(img)/Nchannels)        # compute # of z stacks
-    
-    maxprojchan = []
-    
-    for channelnum in range(0,Nchannels):
-        
-        z=1
-        
-        idx = channelnum+(z-1)*Nchannels
-        
-        imaux = img[idx,:,:]
-        
-        maxprojchan = imaux
-                
-        for z in range(1,NZstacks):
-            
-            idx = channelnum+z*Nchannels;
-            
-            imaux = img[idx,:,:]
-            
-            maxprojchan = np.maximum(maxprojchan,imaux)
-            
-        maxprojchan[:,:]=maxprojchan
-        
-        plt.figure()
-        
-        plt.imshow(maxprojchan)
-        
-        os.chdir(namempfolder)
-        
-        final_file=(filename[0:-4]+'_maxproj')
-        
-        if channelnum==0:
-            
-            tifffile.imwrite(str(final_file+'.tif'), maxprojchan)
-            
-        else:
-            
-            with tifffile.TiffWriter(str(final_file+'.tif'), append=True) as tif2write:
-                tif2write.save(maxprojchan)
-    
-#%% CELL MATCHING: SEGMENT IMAGES AND CREATE IMAGE DATAFRAME
-
-# Note: Must run in an environment with Cellpose installed.
-
-# ====================== ** CHANGE PARAMETERS ** ==============================
-
-Nchannels=4
-
-script_path=r"C:\Users\grace\OneDrive\Documents\Warmflash Lab\Video Analysis Project\code\lineagetrack"
-
-# location of photos to be segmented
-img_path=r"C:\Users\grace\OneDrive\Documents\Warmflash Lab\Video Analysis Project\Data\photo frames\MaxProj"
-
-# =============================================================================
-
-from skimage import io
-from skimage import measure
-import os
-import numpy as np
-import pandas as pd
-
-
-# change path to where you have Image_Processing saved
-os.chdir(script_path)
-
-# import all functions and packages from Image_Processing
-from Cell_Segmenter import loadimages, run_seg, seg_load, clean_seg
-
-# collect all image names
-image_name=[]       # initialize array image_name
-
-for images in os.listdir(img_path):
-        
-    if (images.endswith(".tif")):       # check if the image ends with .tif
-        image_name.append(images)
-
-# initialize list to store data from experimental photos
-experiment_photos=list()
-
-for f in range(len(image_name)):
-    
-    # chooses image to focus on
-    filename=image_name[f]
-    
-    # full file path
-    full_path=(img_path +'/'+filename)
-    
-    # loads image
-    img = loadimages(full_path)
-    
-    # complete segmentation if it does not already exist
-    if not os.path.exists(img_path +'/'+filename[0:-4]+'_seg.npy'):
-
-        run_seg(full_path, script_path)
-    
-    # load segmentation data
-    [masks, img]=seg_load(img_path, filename)
-    
-    # clean masks
-    masksclean = clean_seg(masks)
-    
-    maxprojimage=np.zeros((img.shape[0], img.shape[1], Nchannels)) # initialize array
-    
-    photo_df=pd.DataFrame()
-    
-    from skimage import io
-    
-    for chan in range(Nchannels):
-        # load each channel of the maxproj image into array
-        maxprojimage[:,:, chan]=io.imread(full_path, img_num=chan)
-        
-        if chan==0:
-            centroid = measure.regionprops_table(masksclean, maxprojimage[:,:, chan], 
-                                              properties=['centroid'])
-            
-            dapi_int = measure.regionprops_table(masksclean, maxprojimage[:,:, chan], 
-                                              properties=['mean_intensity'])
-            
-            # create dataframe
-            photo_df=pd.DataFrame(centroid)
-            
-            photo_df=pd.concat([photo_df, pd.DataFrame(dapi_int)], axis=1)
-            
-            photo_df.rename(columns={"mean_intensity":"dapi"}, inplace=True)
-            
-        if chan==1:
-            
-            h2b_int = measure.regionprops_table(masksclean, maxprojimage[:,:, chan], 
-                                              properties=['mean_intensity'])
-            
-            photo_df=pd.concat([photo_df, pd.DataFrame(h2b_int)], axis=1)
-            
-            photo_df.rename(columns={"mean_intensity":"h2b"}, inplace=True)
-            
-        if chan==2:
-            
-            sox2_int = measure.regionprops_table(masksclean, maxprojimage[:,:, chan], 
-                                              properties=['mean_intensity'])
-            
-            photo_df=pd.concat([photo_df, pd.DataFrame(sox2_int)], axis=1)
-            
-            photo_df.rename(columns={"mean_intensity":"sox2"}, inplace=True)
-            
-        if chan==3:
-            bra_int = measure.regionprops_table(masksclean, maxprojimage[:,:, chan], 
-                                              properties=['mean_intensity'])
-            
-            photo_df=pd.concat([photo_df, pd.DataFrame(bra_int)], axis=1)
-            
-            photo_df.rename(columns={"mean_intensity":"bra"}, inplace=True)
-            
-        
-        experiment_photos.append(photo_df)
 
 
 
