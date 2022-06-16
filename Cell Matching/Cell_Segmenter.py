@@ -55,6 +55,8 @@ def clean_seg(masks):
     # Remove small objects
     masksclean=morphology.remove_small_objects(masksclean, min_size=200)
     
+    return masksclean
+    
     
     
     
