@@ -252,131 +252,70 @@ for f in range(len(experiments)):
     
     still_data.append(still_df)    
     
-#%% DATA FRAME: CELL FATES
+    
+#%% DATA FRAME: CELL FATES PT. 2
 
-# sorts final cell data based on fates as determined by BRA and SOX2 expression
+# initialize DataFrames
+bra_pos=pd.DataFrame()
 
-# BRA +: BRA > 850
-# CDX2 + / ISL1 +: BRA < 700, SOX2 < 575
-# SOX2 +: BRA < 700, SOX2 > 600
+cdx2_pos=pd.DataFrame()
 
-# Data Organization: cell_fates is a list containing 4 lists for each condition;
-# each condition is a list containing lists for each well
-# within each well are three dataframes: 0) BRA, 1) CDX2, 2) SOX2
+sox2_pos=pd.DataFrame()
 
-
-# initialize
-cell_fates=list()
 
 for f in range(len(experiments)):
     
     exp=experiments[f]
     
-    dat=still_data[f]
+    # add column storing experimental condition
+    exp["exp_con"]=f
     
     # remove cells with SOX2 < 550
     exp=exp[exp["SOX2_Intensity"]>550]
-
-    dat=dat[dat["SOX2_Intensity"]>550]
     
     # find movie numbers in condition
-    mov_in_con=np.array(pd.unique(dat["Movie_Number"]))
+    mov_in_con=np.array(pd.unique(exp["Movie_Number"]))
     
-    # initialize list for condition
-    condition=list()
-        
     for g in range(len(mov_in_con)):
         
         # focus on specific movie number
-        mov=dat[dat["Movie_Number"]==mov_in_con[g]]
+        mov=exp[exp["Movie_Number"]==mov_in_con[g]]
         
-        full_dat=exp[exp["Movie_Number"]==mov_in_con[g]]
-        
-        # create arrays storing the Final Cell Numbers of each cell type
-        bra_pos_cells=np.array(pd.unique(mov[mov["BRA_Intensity"]>850]["Final_Cell_Number"]))
+        # Identify lineages for each cell fate
+        bra_pos_cells=np.array(pd.unique(mov[(mov["BRA_Intensity"]>850) & (mov["hours"]==51)]["Final_Cell_Number"]))
     
-        cdx2_pos_cells=np.array(pd.unique(mov[(mov["BRA_Intensity"]<700) & (mov["SOX2_Intensity"]<570)]["Final_Cell_Number"]))
+        cdx2_pos_cells=np.array(pd.unique(mov[(mov["BRA_Intensity"]<700) & (mov["SOX2_Intensity"]<570) & (mov["hours"]==51)]["Final_Cell_Number"]))
     
-        sox2_pos_cells=np.array(pd.unique(mov[(mov["BRA_Intensity"]<800) & (mov["SOX2_Intensity"]>600)]["Final_Cell_Number"]))
+        sox2_pos_cells=np.array(pd.unique(mov[(mov["BRA_Intensity"]<800) & (mov["SOX2_Intensity"]>600) & (mov["hours"]==51)]["Final_Cell_Number"]))
         
-        # initialize list for well
-        well=list()
-        
-        # intialize dataframes
-        bra_pos=pd.DataFrame()
-        
-        cdx2_pos=pd.DataFrame()
-
-        sox2_pos=pd.DataFrame()
-
+        # store lineages
         for h in range(len(bra_pos_cells)):
             # store lineage of BRA positive cells
-            bra_pos=pd.concat([bra_pos, full_dat[full_dat["Final_Cell_Number"]==bra_pos_cells[h]]])
+            bra_pos=pd.concat([bra_pos, mov[mov["Final_Cell_Number"]==bra_pos_cells[h]]])
             
         for h in range(len(cdx2_pos_cells)):
             # store lineage of CDX2 positive cells
-            cdx2_pos=pd.concat([cdx2_pos, full_dat[full_dat["Final_Cell_Number"]==cdx2_pos_cells[h]]])
+            cdx2_pos=pd.concat([cdx2_pos, mov[mov["Final_Cell_Number"]==cdx2_pos_cells[h]]])
             
         for h in range(len(sox2_pos_cells)):
             # store lineage of SOX2 positive cells
-            sox2_pos=pd.concat([sox2_pos, full_dat[full_dat["Final_Cell_Number"]==sox2_pos_cells[h]]])
+            sox2_pos=pd.concat([sox2_pos, mov[mov["Final_Cell_Number"]==sox2_pos_cells[h]]])
         
-        # store data
-        well.append(bra_pos)
-        
-        well.append(cdx2_pos)
-        
-        well.append(sox2_pos)
-        
-        condition.append(well)
-        
-    cell_fates.append(condition)
-    
-        
-            
-#%% DATA FRAME: MEAN SOX2 AND H2B INTENSITIES
+bra_pos["fate"]="BRA"
 
-# initialize empty list to store dataframes
-experiments_means=list()
+cdx2_pos["fate"]="CDX2"
 
-# iterate through experimental conditions
-for j in range(nexpcon):
-    
-    # initialize new dataframe to store means for each exp. con.
-    fincellmeans_df=pd.DataFrame()
-    
-    # iterate through movies in each exp. con.
-    for k in range(clus):
-                
-        for l in range(finframe):
-            
-            row=0
-            
-            # mean intensity data for all cells in a frame
-            mean_data=experiments[j][(experiments[j]["Movie_Number"]==k) & 
-                                 (experiments[j]["hours"]==l/4)].mean()
-            
-            # keep columns of interest
-            mean_data=mean_data[["hours", "H2B_Intensity", "SOX2_Intensity", 
-                                 "Movie_Number"]]
-            
-            # append row to dataframe
-            fincellmeans_df=pd.concat([fincellmeans_df, 
-                                       pd.DataFrame(mean_data).transpose()])
-            
-            # reset index
-            fincellmeans_df=fincellmeans_df.reset_index(drop="True")
+sox2_pos["fate"]="SOX2"
 
-        
-    # rename H2B and SOX2 Columns
-    fincellmeans_df.rename(columns={"H2B_Intensity":"H2B_Mean", 
-                                "SOX2_Intensity":"SOX2_Mean"},
-                      inplace=True)
-    
-    # add dataframe to list
-    experiments_means.append(fincellmeans_df)
-    
+bra_pos.reset_index(drop=True, inplace=True)
 
+cdx2_pos.reset_index(drop=True, inplace=True)
+
+sox2_pos.reset_index(drop=True, inplace=True)
+
+all_fates=pd.concat([bra_pos, sox2_pos, cdx2_pos])
+
+all_fates.reset_index(drop=True, inplace=True)
 
 #%% FULL DATA PLOTS: SOX2 INTENSITIES
 
@@ -791,59 +730,34 @@ for j in range(len(experiments)):
         
         plt.savefig(r"C:\Users\grace\OneDrive\Documents\Warmflash Lab\Video Analysis Project\code\figures\BRA Positive\Condition "+str(j)+'/bra_c'+str(j)+'_'+str(k)+'.png')
 
-#%% FULL DATA PLOT: ALL CELL FATES IN AN EXPERIMENTAL CONDITION
+#%% FULL DATA PLOT: EACH CELL FATES IN EACH EXPERIMENTAL CONDITION
 
 # run DATA FRAME: CELL FATES first
-
-bra_pos=list()
-
-cdx2_pos=list()
-
-sox2_pos=list()
-
+    
 for f in range(len(experiments)):
     
-    # choose experimental condition
-    con=cell_fates[f]
-    
-    # initialize dataframe
-    bra_dat=pd.DataFrame()
-    
-    cdx2_dat=pd.DataFrame()
-    
-    sox2_dat=pd.DataFrame()
-    
-    for g in range(len(con)):
-       
-        bra_dat=pd.concat([bra_dat, con[g][0]])
-        
-        cdx2_dat=pd.concat([cdx2_dat, con[g][1]])
-        
-        sox2_dat=pd.concat([sox2_dat, con[g][2]])
-    
-    bra_pos.append(bra_dat)
-    
-    cdx2_pos.append(cdx2_dat)
-    
-    sox2_pos.append(sox2_dat)
-    
-for f in range(len(bra_pos)):
+    bra_pos_plot=bra_pos[bra_pos["exp_con"]==f]
     
     # Plot BRA Positive Cells first
-    if bra_pos[f].empty:
+    if bra_pos_plot.empty:
         
         continue
     
     else:
         plt.figure(dpi=500)
         
-        hue=bra_pos[f][["trackId", "Movie_Number"]].apply(
+        y_ops=[(550,775), (525,750), (525, 750), (550, 775)]
+        
+        plt.ylim(y_ops[f])
+        
+        
+        hue=bra_pos_plot[["trackId", "Movie_Number"]].apply(
             lambda row: f"{row.trackId}, {row.Movie_Number}", axis=1)
         
-        sns.lineplot(x="hours", y="SOX2_Intensity", data=bra_pos[f], hue=hue,
+        sns.lineplot(x="hours", y="SOX2_Intensity", data=bra_pos_plot, hue=hue,
                      palette=sns.dark_palette("Red", n_colors=len(pd.unique(hue)), reverse=True), legend=False)
         
-        sns.lineplot(x="hours", y="SOX2_Intensity", data=bra_pos[f], color="paleturquoise",
+        sns.lineplot(x="hours", y="SOX2_Intensity", data=bra_pos_plot, color="paleturquoise",
                      err_style="bars", err_kws={'capsize':3, 'ecolor':"deepskyblue"}, legend=False)
         
         
@@ -861,23 +775,29 @@ for f in range(len(bra_pos)):
         
         plt.title(titles[f], fontsize=12)
         
-for f in range(len(cdx2_pos)):
+for f in range(len(experiments)):
     
-    # Plot CDX2 Positive Cells first
-    if cdx2_pos[f].empty:
+    cdx2_pos_plot=cdx2_pos[cdx2_pos["exp_con"]==f]
+    
+    # Plot CDX2 Positive Cells
+    if cdx2_pos_plot.empty:
         
         continue
     
     else:
         plt.figure(dpi=500)
         
-        hue=cdx2_pos[f][["trackId", "Movie_Number"]].apply(
+        y_ops=[(550,775), (525,750), (525, 750), (550, 775)]
+        
+        plt.ylim(y_ops[f])
+        
+        hue=cdx2_pos_plot[["trackId", "Movie_Number"]].apply(
             lambda row: f"{row.trackId}, {row.Movie_Number}", axis=1)
         
-        sns.lineplot(x="hours", y="SOX2_Intensity", data=cdx2_pos[f], hue=hue,
+        sns.lineplot(x="hours", y="SOX2_Intensity", data=cdx2_pos_plot, hue=hue,
                      palette=sns.dark_palette("Red", n_colors=len(pd.unique(hue)), reverse=True), legend=False)
         
-        sns.lineplot(x="hours", y="SOX2_Intensity", data=cdx2_pos[f], color="paleturquoise",
+        sns.lineplot(x="hours", y="SOX2_Intensity", data=cdx2_pos_plot, color="paleturquoise",
                      err_style="bars", err_kws={'capsize':3, 'ecolor':"deepskyblue"}, legend=False)
         
         
@@ -895,23 +815,30 @@ for f in range(len(cdx2_pos)):
         
         plt.title(titles[f], fontsize=12)
         
-for f in range(len(sox2_pos)):
+        
+for f in range(len(experiments)):
     
-    # Plot CDX2 Positive Cells first
-    if sox2_pos[f].empty:
+    sox2_pos_plot=sox2_pos[sox2_pos["exp_con"]==f]
+    
+    # Plot SOX2 Positive Cells last
+    if sox2_pos_plot.empty:
         
         continue
     
     else:
         plt.figure(dpi=500)
         
-        hue=sox2_pos[f][["trackId", "Movie_Number"]].apply(
+        y_ops=[(550,775), (525,750), (525, 750), (550, 775)]
+        
+        plt.ylim(y_ops[f])
+        
+        hue=sox2_pos_plot[["trackId", "Movie_Number"]].apply(
             lambda row: f"{row.trackId}, {row.Movie_Number}", axis=1)
         
-        sns.lineplot(x="hours", y="SOX2_Intensity", data=sox2_pos[f], hue=hue,
+        sns.lineplot(x="hours", y="SOX2_Intensity", data=sox2_pos_plot, hue=hue,
                      palette=sns.dark_palette("Red", n_colors=len(pd.unique(hue)), reverse=True), legend=False)
         
-        sns.lineplot(x="hours", y="SOX2_Intensity", data=sox2_pos[f], color="paleturquoise",
+        sns.lineplot(x="hours", y="SOX2_Intensity", data=sox2_pos_plot, color="paleturquoise",
                      err_style="bars", err_kws={'capsize':3, 'ecolor':"deepskyblue"}, legend=False)
         
         
@@ -929,7 +856,60 @@ for f in range(len(sox2_pos)):
         
         plt.title(titles[f], fontsize=12)
     
+#%% FULL DATA PLOT: ALL CELL FATES IN EACH EXPERIMENTAL CONDITION
+
+for f in range(len(experiments)):
     
+    # plot cell fates in experimental condition
+    plt.figure(dpi=500)
+    
+    plt.suptitle("SOX2 Intensity of Different Cell Fates", fontsize=14)
+    
+    titles=['mTeSR 0-48', "BMP 10ng/ml 0-30, Noggin 30-48", 
+            "BMP 50ng/ml 0-30, Noggin 30-48",
+            'BMP 50ng/ml 0-48']
+    
+    plt.title(titles[f], fontsize=12)
+    
+    if bra_pos[bra_pos["exp_con"]==f].empty==False:
+       
+        sns.lineplot(x="hours", y="SOX2_Intensity", data=bra_pos[bra_pos["exp_con"]==f], color="indigo",
+                 err_style="bars", err_kws={'capsize':3, 'ecolor':"indigo"}, label="BRA Positive")
+    
+    if sox2_pos[sox2_pos["exp_con"]==f].empty==False:    
+        sns.lineplot(x="hours", y="SOX2_Intensity", data=sox2_pos[sox2_pos["exp_con"]==f], color="r",
+                 err_style="bars", err_kws={'capsize':3, 'ecolor':"r"}, label="SOX2 Positive")
+    
+    if cdx2_pos[cdx2_pos["exp_con"]==f].empty==False:
+        sns.lineplot(x="hours", y="SOX2_Intensity", data=cdx2_pos[cdx2_pos["exp_con"]==f], color="b",
+                 err_style="bars", err_kws={'capsize':3, 'ecolor':"b"}, label="CDX2 Positive")
+    
+
+#%% FULL DATA PLOT: HISTOGRAM OF SOX2 FOR EACH CELL FATE
+
+dat=[bra_pos, sox2_pos, cdx2_pos]
+
+for f in range(len(dat)):
+
+    plt.figure(dpi=500)
+    
+    titles=["BRA", "SOX2", "CDX2"]
+    
+    plt.suptitle("SOX2 Intensity of "+titles[f]+" Positive Cells", fontsize=14)
+    
+    colors=["indigo", "r", "b"]
+    
+    dat_plot=dat[f][dat[f]["hours"]==51]
+    
+    sns.histplot(x="SOX2_Intensity", data=dat_plot, color=colors[f])
+
+
+plt.figure(dpi=500)
+
+plt.suptitle("SOX2 Intensity of Different Cell Fates", fontsize=14)
+
+sns.histplot(x="SOX2_Intensity", data=all_fates[all_fates["hours"]==51], palette=colors, hue="fate")
+ 
 #%% PLOT CENTROIDS OF CELLS WITH SOX2 EXPRESSION LESS THAN 550
 
 # Necessary for checking that these cells are being rightfully removed
